@@ -7,8 +7,8 @@ definePageMeta({
 const { login } = useAuth()
 const route = useRoute()
 
-const email = ref('operador@cafeteriacentral.com')
-const senha = ref('123456')
+const email = ref('')
+const senha = ref('')
 const loading = ref(false)
 const error = ref('')
 
