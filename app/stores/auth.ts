@@ -2,25 +2,31 @@ import type { AuthSession, LoginResponse } from '~/types/api'
 
 export const useAuthStore = defineStore('auth', () => {
   const session = useCookie<AuthSession | null>('cameriere_auth', {
-    maxAge: 60 * 60 * 24,
+    maxAge: 60 * 60 * 8,
     sameSite: 'lax',
+    secure: !import.meta.dev,
   })
 
-  const isAuthenticated = computed(() => Boolean(session.value?.accessToken))
+  const isAuthenticated = computed(() => Boolean(session.value?.usuarioId))
   const isAdmin = computed(() => session.value?.role === 'ADMIN')
   const isUser = computed(() => session.value?.role === 'USER')
-  const token = computed(() => session.value?.accessToken ?? null)
   const user = computed(() => session.value)
 
   function setSession(login: LoginResponse) {
     session.value = {
-      accessToken: login.accessToken,
-      expiresAt: Date.now() + (login.expiresInMs || 86400000),
+      expiresAt: Date.now() + (login.expiresInMs || 28800000),
       usuarioId: login.usuarioId,
       nome: login.nome,
       email: login.email,
       role: login.role,
       clienteId: login.clienteId,
+      doisFatoresAtivo: login.doisFatoresAtivo,
+    }
+  }
+
+  function setMfaAtivo(ativo: boolean) {
+    if (session.value) {
+      session.value = { ...session.value, doisFatoresAtivo: ativo }
     }
   }
 
@@ -36,11 +42,11 @@ export const useAuthStore = defineStore('auth', () => {
   return {
     session,
     user,
-    token,
     isAuthenticated,
     isAdmin,
     isUser,
     setSession,
+    setMfaAtivo,
     clearSession,
     isExpired,
   }

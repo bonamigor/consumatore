@@ -16,16 +16,75 @@ export interface LoginResponse {
   email: string
   role: Role
   clienteId: number | null
+  doisFatoresAtivo: boolean
 }
 
+/** Senha correta; falta o código do aplicativo autenticador. */
+export interface LoginMfaPendente {
+  mfaPendente: true
+  mfaToken: string
+}
+
+// Dados de exibição da sessão; o token fica apenas no cookie HttpOnly
 export interface AuthSession {
-  accessToken: string
   expiresAt: number
   usuarioId: number
   nome: string
   email: string
   role: Role
   clienteId: number | null
+  doisFatoresAtivo: boolean
+}
+
+export interface Sessao {
+  usuarioId: number
+  nome: string
+  email: string
+  role: Role
+  clienteId: number | null
+  doisFatoresAtivo: boolean
+  codigosRecuperacaoRestantes: number
+}
+
+export interface ConfiguracaoMfa {
+  segredo: string
+  otpauthUri: string
+}
+
+export type AcaoAuditoria =
+  | 'LOGIN_SUCESSO'
+  | 'LOGIN_FALHA'
+  | 'LOGIN_BLOQUEADO'
+  | 'LOGOUT'
+  | 'MFA_FALHA'
+  | 'MFA_ATIVADO'
+  | 'MFA_DESATIVADO'
+  | 'MFA_REDEFINIDO'
+  | 'CODIGO_RECUPERACAO_USADO'
+  | 'ALTERACAO'
+
+export interface RegistroAuditoria {
+  id: number
+  dataHora: string
+  acao: AcaoAuditoria
+  usuarioId: number | null
+  usuarioEmail: string | null
+  metodo: string | null
+  recurso: string | null
+  statusHttp: number | null
+  ip: string | null
+  detalhe: string | null
+}
+
+/** Formato de página do Spring Data (VIA_DTO): conteúdo + metadados em "page". */
+export interface PaginaDTO<T> {
+  content: T[]
+  page: {
+    size: number
+    number: number
+    totalElements: number
+    totalPages: number
+  }
 }
 
 export interface Endereco {
@@ -89,6 +148,7 @@ export interface Usuario {
   admin: boolean
   clienteId?: number | null
   clienteNome?: string | null
+  doisFatoresAtivo?: boolean
   dataCriacao?: string
   dataAtualizacao?: string
 }

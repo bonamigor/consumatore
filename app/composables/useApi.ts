@@ -2,21 +2,26 @@ import type { FetchOptions } from 'ofetch'
 import { getErrorMessage } from '~/utils/format'
 
 export function useApi() {
-  const config = useRuntimeConfig()
   const auth = useAuthStore()
   const router = useRouter()
 
+  // O JWT viaja no cookie HttpOnly definido pela API; o JavaScript nunca o lê
   const api = $fetch.create({
-    baseURL: config.public.apiBase as string,
+    credentials: 'same-origin',
     onRequest({ options }) {
       const headers = new Headers(options.headers as HeadersInit | undefined)
-      if (auth.token) {
-        headers.set('Authorization', `Bearer ${auth.token}`)
-      }
       headers.set('Accept', 'application/json')
       options.headers = headers
     },
     async onResponseError({ response }) {
+      // Administrador sem 2FA: a API só libera a configuração do 2FA
+      const tipo = (response._data as { type?: string } | undefined)?.type
+      if (response.status === 403 && tipo?.endsWith('/mfa-obrigatorio')) {
+        if (import.meta.client && router.currentRoute.value.path !== '/seguranca') {
+          await navigateTo({ path: '/seguranca', query: { obrigatorio: '1' } })
+        }
+        return
+      }
       if (response.status === 401) {
         auth.clearSession()
         if (import.meta.client && router.currentRoute.value.path !== '/login') {

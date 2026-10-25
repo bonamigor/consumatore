@@ -13,6 +13,7 @@ const clientMenu: MenuItem[] = [
   { label: 'Início', path: '/', icon: 'lucide:home' },
   { label: 'Fazer Pedido', path: '/pedido/novo', icon: 'lucide:shopping-cart' },
   { label: 'Meus Pedidos', path: '/pedidos', icon: 'lucide:clipboard-list', match: '/pedidos' },
+  { label: 'Segurança', path: '/seguranca', icon: 'lucide:shield-check' },
 ]
 
 const adminMenu: MenuItem[] = [
@@ -27,6 +28,8 @@ const adminMenu: MenuItem[] = [
   { label: 'Estantes', path: '/admin/estantes', icon: 'lucide:layout-grid', match: '/admin/estantes' },
   { label: 'Usuários', path: '/admin/usuarios', icon: 'lucide:user-cog', match: '/admin/usuarios' },
   { label: 'Relatórios', path: '/admin/relatorios', icon: 'lucide:bar-chart-3', match: '/admin/relatorios' },
+  { label: 'Auditoria', path: '/admin/auditoria', icon: 'lucide:scroll-text', match: '/admin/auditoria' },
+  { label: 'Segurança', path: '/seguranca', icon: 'lucide:shield-check' },
 ]
 
 const menuItems = computed(() => (auth.isAdmin.value ? adminMenu : clientMenu))

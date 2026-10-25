@@ -10,5 +10,6 @@ export function useUsuarioService() {
     atualizar: (id: number, payload: UsuarioUpdate) =>
       api.put<Usuario>(`/api/usuarios/${id}`, payload),
     remover: (id: number) => api.del(`/api/usuarios/${id}`),
+    redefinirMfa: (id: number) => api.del(`/api/usuarios/${id}/2fa`),
   }
 }
