@@ -59,11 +59,11 @@ function focarProximo(evento: KeyboardEvent) {
             <td class="px-3 py-2 text-right tabular-nums text-gray-500">{{ formatQuantidade(linha.item.quantidade) }}</td>
             <td class="px-3 py-1.5 text-right">
               <input
-                :value="linha.quantidade > 0 ? formatQuantidade(linha.quantidade) : ''"
+                :value="linha.quantidade > 0 ? formatQuantidade(linha.quantidade, 6) : ''"
                 data-grupo="desktop"
                 class="input w-24 py-1.5 text-right tabular-nums"
                 :class="linha.erro ? 'border-red-400 focus:border-red-500 focus:ring-red-500/20' : ''"
-                inputmode="numeric"
+                inputmode="decimal"
                 autocomplete="off"
                 :aria-label="`Quantidade de ${linha.item.produtoNome}`"
                 :aria-invalid="!!linha.erro"
@@ -96,11 +96,11 @@ function focarProximo(evento: KeyboardEvent) {
           <p v-if="linha.erro" class="text-xs text-red-700">{{ linha.erro }}</p>
         </div>
         <input
-          :value="linha.quantidade > 0 ? formatQuantidade(linha.quantidade) : ''"
+          :value="linha.quantidade > 0 ? formatQuantidade(linha.quantidade, 6) : ''"
           data-grupo="mobile"
           class="input w-20 py-1.5 text-right tabular-nums"
           :class="linha.erro ? 'border-red-400' : ''"
-          inputmode="numeric"
+          inputmode="decimal"
           autocomplete="off"
           :aria-label="`Quantidade de ${linha.item.produtoNome}`"
           :aria-invalid="!!linha.erro"

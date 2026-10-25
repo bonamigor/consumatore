@@ -144,7 +144,7 @@ onMounted(load)
           <tr>
             <th class="table-th">Produto</th>
             <th class="table-th">Preço venda</th>
-            <th class="table-th">Estoque</th>
+            <th class="table-th">Saldo</th>
             <th class="table-th">Status</th>
             <th class="table-th">Ações</th>
           </tr>
@@ -155,7 +155,7 @@ onMounted(load)
             <td class="table-td">{{ formatCurrency(item.precoVenda) }}</td>
             <td class="table-td">
               <span class="rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-800">
-                {{ item.quantidade }}
+                {{ formatQuantidade(Number(item.quantidade)) }} {{ item.unidadeMedidaSigla }}
               </span>
             </td>
             <td class="table-td">
@@ -192,8 +192,9 @@ onMounted(load)
           <input v-model.number="form.precoVenda" class="input" type="number" min="0.01" step="0.01" required>
         </div>
         <div>
-          <label class="label">Quantidade em estoque</label>
-          <input v-model.number="form.quantidadeEstoque" class="input" type="number" min="0" required>
+          <label class="label">Saldo do edital</label>
+          <input v-model.number="form.quantidadeEstoque" class="input" type="number" min="0" step="0.001" required>
+          <p class="mt-1 text-xs text-gray-500">Aceita frações, como 35,5 kg (até 3 casas decimais).</p>
         </div>
       </form>
       <template #footer>
