@@ -14,6 +14,14 @@ export function useApi() {
       options.headers = headers
     },
     async onResponseError({ response }) {
+      // Administrador sem 2FA: a API só libera a configuração do 2FA
+      const tipo = (response._data as { type?: string } | undefined)?.type
+      if (response.status === 403 && tipo?.endsWith('/mfa-obrigatorio')) {
+        if (import.meta.client && router.currentRoute.value.path !== '/seguranca') {
+          await navigateTo({ path: '/seguranca', query: { obrigatorio: '1' } })
+        }
+        return
+      }
       if (response.status === 401) {
         auth.clearSession()
         if (import.meta.client && router.currentRoute.value.path !== '/login') {

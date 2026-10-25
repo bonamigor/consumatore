@@ -115,6 +115,17 @@ async function save() {
   }
 }
 
+async function redefinirMfa(u: Usuario) {
+  if (!confirm(`Redefinir a verificação em duas etapas de ${u.nome}? Use quando a pessoa perdeu o celular e os códigos de recuperação. Ela precisará configurar novamente.`)) return
+  try {
+    await usuarioService.redefinirMfa(u.id)
+    await load()
+  }
+  catch (e) {
+    error.value = e instanceof Error ? e.message : 'Erro ao redefinir 2FA'
+  }
+}
+
 async function remove(u: Usuario) {
   if (!confirm(`Excluir usuário ${u.nome}?`)) return
   try {
@@ -152,6 +163,7 @@ onMounted(load)
             <th class="table-th">E-mail</th>
             <th class="table-th">Perfil</th>
             <th class="table-th">Cliente</th>
+            <th class="table-th">2FA</th>
             <th class="table-th">Ações</th>
           </tr>
         </thead>
@@ -169,7 +181,21 @@ onMounted(load)
             </td>
             <td class="table-td">{{ u.admin ? '—' : (u.clienteNome || '—') }}</td>
             <td class="table-td">
+              <span v-if="u.doisFatoresAtivo" class="inline-flex items-center gap-1 text-sm font-medium text-green-700">
+                <Icon name="lucide:shield-check" class="h-4 w-4" /> Ativo
+              </span>
+              <span v-else class="text-sm text-gray-500">Inativo</span>
+            </td>
+            <td class="table-td">
               <button type="button" class="mr-4 font-medium text-brand-600" @click="openEdit(u)">Editar</button>
+              <button
+                v-if="u.doisFatoresAtivo"
+                type="button"
+                class="mr-4 font-medium text-amber-700"
+                @click="redefinirMfa(u)"
+              >
+                Redefinir 2FA
+              </button>
               <button type="button" class="font-medium text-red-600" @click="remove(u)">Excluir</button>
             </td>
           </tr>
@@ -196,7 +222,7 @@ onMounted(load)
             Senha
             <span v-if="editing" class="font-normal text-gray-500">(deixe em branco para manter)</span>
           </label>
-          <input v-model="form.senha" class="input" type="password" minlength="6" :required="!editing">
+          <input v-model="form.senha" class="input" type="password" minlength="8" maxlength="72" :required="!editing">
         </div>
         <div class="rounded-lg border border-gray-200 bg-gray-50 p-3">
           <div class="flex items-center gap-2">

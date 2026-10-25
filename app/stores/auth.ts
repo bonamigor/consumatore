@@ -20,6 +20,13 @@ export const useAuthStore = defineStore('auth', () => {
       email: login.email,
       role: login.role,
       clienteId: login.clienteId,
+      doisFatoresAtivo: login.doisFatoresAtivo,
+    }
+  }
+
+  function setMfaAtivo(ativo: boolean) {
+    if (session.value) {
+      session.value = { ...session.value, doisFatoresAtivo: ativo }
     }
   }
 
@@ -39,6 +46,7 @@ export const useAuthStore = defineStore('auth', () => {
     isAdmin,
     isUser,
     setSession,
+    setMfaAtivo,
     clearSession,
     isExpired,
   }
