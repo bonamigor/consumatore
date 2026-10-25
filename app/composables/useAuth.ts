@@ -3,7 +3,7 @@ import type { LoginMfaPendente, LoginRequest } from '~/types/api'
 export function useAuth() {
   const authService = useAuthService()
   const auth = useAuthStore()
-  const cart = useCartStore()
+  const rascunho = useRascunhoPedidoStore()
 
   /** Retorna o token de verificação quando o usuário tem 2FA; caso contrário, já abre a sessão. */
   async function login(payload: LoginRequest): Promise<LoginMfaPendente | null> {
@@ -27,7 +27,7 @@ export function useAuth() {
       // Mesmo se a API falhar, a sessão local é encerrada
     }
     auth.clearSession()
-    cart.clear()
+    rascunho.descartarTodos()
     await navigateTo('/login')
   }
 
