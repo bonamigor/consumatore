@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Cliente, Estante, EstanteProduto } from '~/types/api'
-import { formatCurrency } from '~/utils/format'
+import type { LinhaPedido } from '~/utils/pedido'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -9,395 +9,310 @@ const clienteService = useClienteService()
 const estanteService = useEstanteService()
 const estanteProdutoService = useEstanteProdutoService()
 const pedidoService = usePedidoService()
-const cart = useCartStore()
+const rascunho = useRascunhoPedidoStore()
 const route = useRoute()
 
-const loading = ref(true)
-const submitting = ref(false)
-const error = ref('')
-const success = ref('')
-const clientes = ref<Cliente[]>([])
-const selectedClienteId = ref<number | null>(
-  Number(route.query.clienteId) || auth.session?.clienteId || null,
-)
-const estantes = ref<Estante[]>([])
-const selectedEstanteId = ref<number | null>(null)
-const produtos = ref<EstanteProduto[]>([])
-const searchTerm = ref('')
-const viewMode = ref<'grid' | 'list'>('list')
-const showCart = ref(false)
-const ready = ref(false)
+const etapa = ref<'itens' | 'revisao'>('itens')
+const carregando = ref(true)
+const carregandoItens = ref(false)
+const enviando = ref(false)
+const erro = ref('')
+const aviso = ref('')
 
-const filteredProdutos = computed(() => {
-  const term = searchTerm.value.toLowerCase().trim()
-  if (!term) return produtos.value
-  return produtos.value.filter(p => p.produtoNome.toLowerCase().includes(term))
+const clientes = ref<Cliente[]>([])
+const clienteId = ref<number | null>(Number(route.query.clienteId) || auth.session?.clienteId || null)
+const estantes = ref<Estante[]>([])
+const estanteId = ref<number | null>(null)
+const itens = ref<EstanteProduto[]>([])
+
+const busca = ref('')
+const somentePreenchidos = ref(false)
+
+const estanteAtual = computed(() => estantes.value.find(e => e.id === estanteId.value) ?? null)
+const nomeEscola = computed(() =>
+  clientes.value.find(c => c.id === clienteId.value)?.nome
+  ?? estanteAtual.value?.clienteNome
+  ?? '—',
+)
+const descricaoEdital = computed(() => {
+  const e = estanteAtual.value
+  if (!e) return '—'
+  return e.observacao ? `${e.periodo} · ${e.observacao}` : e.periodo
 })
 
-async function loadEstantes() {
+const linhas = computed<LinhaPedido[]>(() =>
+  itens.value.map((item) => {
+    const quantidade = rascunho.quantidade(item.produtoId)
+    return {
+      item,
+      quantidade,
+      subtotal: quantidade * Number(item.precoVenda),
+      erro: validarQuantidade(item, quantidade),
+    }
+  }),
+)
+
+const linhasVisiveis = computed(() => {
+  const termo = busca.value.toLowerCase().trim()
+  return linhas.value.filter(l =>
+    (!somentePreenchidos.value || l.quantidade > 0)
+    && (!termo || l.item.produtoNome.toLowerCase().includes(termo)),
+  )
+})
+
+const linhasPreenchidas = computed(() => linhas.value.filter(l => l.quantidade > 0))
+const linhasComErro = computed(() => linhasPreenchidas.value.filter(l => l.erro))
+const total = computed(() =>
+  linhasPreenchidas.value.filter(l => !l.erro).reduce((soma, l) => soma + l.subtotal, 0),
+)
+
+const salvoAs = computed(() =>
+  rascunho.salvoEm
+    ? new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit' }).format(rascunho.salvoEm)
+    : null,
+)
+
+async function carregarEstantes() {
   if (auth.isAdmin && !clientes.value.length) {
     clientes.value = await clienteService.listar()
-    if (!selectedClienteId.value && clientes.value.length) {
-      selectedClienteId.value = clientes.value[0].id
+    if (!clienteId.value && clientes.value.length) {
+      clienteId.value = clientes.value[0].id
     }
   }
-
-  if (!selectedClienteId.value) {
-    error.value = auth.isAdmin
-      ? 'Selecione um cliente para montar o pedido.'
-      : 'Usuário sem cliente vinculado. Contate o administrador.'
+  if (!clienteId.value) {
     estantes.value = []
+    estanteId.value = null
+    erro.value = auth.isAdmin
+      ? 'Selecione uma escola para montar o pedido.'
+      : 'Seu usuário não está vinculado a uma escola. Fale com o administrador.'
     return
   }
-
-  const page = await estanteService.listarPorCliente(selectedClienteId.value, {
-    size: 50,
-    sort: 'periodo,desc',
-  })
-  estantes.value = (page.content || []).filter(e => e.ativa !== false)
-  selectedEstanteId.value = estantes.value[0]?.id ?? null
+  const pagina = await estanteService.listarPorCliente(clienteId.value, { size: 50, sort: 'periodo,desc' })
+  estantes.value = (pagina.content || []).filter(e => e.ativa !== false)
+  estanteId.value = estantes.value[0]?.id ?? null
 }
 
-async function loadProdutos() {
-  if (!selectedEstanteId.value) {
-    produtos.value = []
-    return
+async function carregarItens() {
+  itens.value = []
+  if (!estanteId.value || !clienteId.value || !auth.session) return
+  rascunho.abrir({ usuarioId: auth.session.usuarioId, clienteId: clienteId.value, estanteId: estanteId.value })
+  carregandoItens.value = true
+  try {
+    itens.value = await estanteProdutoService.listarDisponiveis(estanteId.value)
   }
-  produtos.value = await estanteProdutoService.listarDisponiveis(selectedEstanteId.value)
+  finally {
+    carregandoItens.value = false
+  }
 }
 
-watch(selectedClienteId, async () => {
-  if (!ready.value) return
-  cart.clear()
+async function executar(acao: () => Promise<void>, mensagem: string) {
   try {
-    error.value = ''
-    await loadEstantes()
-    await loadProdutos()
+    erro.value = ''
+    await acao()
   }
   catch (e) {
-    error.value = e instanceof Error ? e.message : 'Erro ao carregar estantes'
+    erro.value = e instanceof Error ? e.message : mensagem
   }
-})
+}
 
-watch(selectedEstanteId, async () => {
-  if (!ready.value) return
-  try {
-    await loadProdutos()
-  }
-  catch (e) {
-    error.value = e instanceof Error ? e.message : 'Erro ao carregar produtos'
-  }
-})
+// O rascunho é salvo por edital, então trocar de escola ou edital não perde nada do que foi preenchido
+watch(clienteId, () => !carregando.value && executar(async () => {
+  aviso.value = ''
+  await carregarEstantes()
+}, 'Não foi possível carregar os editais da escola'))
+
+watch(estanteId, () => executar(async () => {
+  etapa.value = 'itens'
+  aviso.value = ''
+  await carregarItens()
+}, 'Não foi possível carregar os itens do edital'))
 
 onMounted(async () => {
-  try {
-    await loadEstantes()
-    await loadProdutos()
-  }
-  catch (e) {
-    error.value = e instanceof Error ? e.message : 'Erro ao carregar catálogo'
-  }
-  finally {
-    loading.value = false
-    ready.value = true
-  }
+  await executar(carregarEstantes, 'Não foi possível carregar os editais')
+  carregando.value = false
 })
 
-function addProduct(p: EstanteProduto) {
-  cart.addItem({
-    produtoId: p.produtoId,
-    estanteId: p.estanteId,
-    produtoNome: p.produtoNome,
-    precoVenda: Number(p.precoVenda),
-    quantidadeDisponivel: Number(p.quantidade),
-  })
+function alterarQuantidade(produtoId: number, quantidade: number) {
+  rascunho.definirQuantidade(produtoId, quantidade)
 }
 
-async function submitOrder() {
-  const clienteId = selectedClienteId.value
-  if (!clienteId) {
-    error.value = 'Cliente não identificado'
-    return
-  }
-  if (!cart.items.length) {
-    error.value = 'Adicione produtos ao carrinho'
-    return
-  }
+async function repetirUltimoPedido() {
+  if (!clienteId.value) return
+  if (rascunho.quantidadeItens && !confirm('Substituir as quantidades preenchidas pelas do último pedido?')) return
+  await executar(async () => {
+    const pagina = await pedidoService.listarPorCliente(clienteId.value!, { size: 10, sort: 'dataCriacao,desc' })
+    const ultimo = (pagina.content || []).find(p => p.status !== 'CANCELADO')
+    if (!ultimo) {
+      aviso.value = 'Esta escola ainda não tem pedidos anteriores para repetir.'
+      return
+    }
+    const noEdital = new Set(itens.value.map(i => i.produtoId))
+    const quantidades: Record<number, number> = {}
+    let foraDoEdital = 0
+    for (const item of ultimo.itens ?? []) {
+      if (noEdital.has(item.produto.id)) quantidades[item.produto.id] = Number(item.quantidade)
+      else foraDoEdital++
+    }
+    rascunho.substituirQuantidades(quantidades)
+    somentePreenchidos.value = true
+    const data = formatDate(ultimo.dataCriacao)
+    aviso.value = `Quantidades do pedido #${ultimo.id} (${data}) aplicadas. Revise antes de enviar.`
+      + (foraDoEdital ? ` ${foraDoEdital === 1 ? '1 item não está' : `${foraDoEdital} itens não estão`} neste edital e ficou de fora.` : '')
+  }, 'Não foi possível carregar o último pedido')
+}
 
-  submitting.value = true
-  error.value = ''
-  success.value = ''
-  try {
+function irParaRevisao() {
+  erro.value = ''
+  if (!linhasPreenchidas.value.length) {
+    erro.value = 'Preencha a quantidade de pelo menos um item.'
+    return
+  }
+  if (linhasComErro.value.length) {
+    somentePreenchidos.value = true
+    erro.value = 'Corrija os itens destacados antes de revisar o pedido.'
+    return
+  }
+  etapa.value = 'revisao'
+}
+
+async function enviarPedido() {
+  if (!clienteId.value) return
+  enviando.value = true
+  await executar(async () => {
     const pedido = await pedidoService.criar({
-      clienteId,
-      observacao: cart.observacao || null,
-      itens: cart.items.map(i => ({
-        produtoId: i.produtoId,
-        estanteId: i.estanteId,
-        quantidade: i.quantidade,
+      clienteId: clienteId.value!,
+      observacao: rascunho.observacao.trim() || null,
+      itens: linhasPreenchidas.value.map(l => ({
+        produtoId: l.item.produtoId,
+        estanteId: l.item.estanteId,
+        quantidade: l.quantidade,
+        observacao: rascunho.observacoesItens[l.item.produtoId]?.trim() || null,
       })),
     })
-    cart.clear()
-    showCart.value = false
-    success.value = `Pedido #${pedido.id} criado com sucesso!`
+    rascunho.descartar()
     await navigateTo(`/pedidos/${pedido.id}`)
-  }
-  catch (e) {
-    error.value = e instanceof Error ? e.message : 'Erro ao criar pedido'
-  }
-  finally {
-    submitting.value = false
-  }
+  }, 'Não foi possível enviar o pedido')
+  enviando.value = false
 }
 </script>
 
 <template>
   <div>
+    <nav class="mb-1 text-sm text-gray-500">
+      <NuxtLink :to="auth.isAdmin ? '/admin/pedidos' : '/pedidos'" class="hover:text-gray-700">Pedidos</NuxtLink>
+      <span class="mx-1.5">/</span>
+      <span class="text-gray-700">Novo pedido</span>
+    </nav>
+
     <UiPageHeader
-      title="Catálogo de Produtos"
-      description="Selecione os produtos para seu pedido"
+      :title="etapa === 'itens' ? 'Novo pedido' : 'Revisar pedido'"
+      :description="etapa === 'itens'
+        ? 'Informe as quantidades dos itens do edital.'
+        : 'Confira os itens antes de enviar ao fornecedor.'"
     >
       <template #actions>
-        <button class="btn-primary relative" type="button" @click="showCart = true">
-          <Icon name="lucide:shopping-cart" class="h-5 w-5" />
-          Carrinho
-          <span
-            v-if="cart.totalItems"
-            class="absolute -right-2 -top-2 flex h-7 w-7 items-center justify-center rounded-full bg-red-500 text-sm font-bold text-white"
-          >
-            {{ cart.totalItems }}
-          </span>
+        <span v-if="salvoAs && etapa === 'itens'" class="flex items-center gap-1.5 self-center text-xs text-gray-500">
+          <Icon name="lucide:cloud-check" class="h-4 w-4" />
+          Rascunho salvo às {{ salvoAs }}
+        </span>
+        <button
+          v-if="etapa === 'itens' && itens.length"
+          type="button"
+          class="btn-secondary"
+          @click="repetirUltimoPedido"
+        >
+          <Icon name="lucide:history" class="h-4 w-4" />
+          Repetir último pedido
         </button>
       </template>
     </UiPageHeader>
 
-    <UiAlertBanner v-if="error" type="error" :message="error" class="mb-4" />
-    <UiAlertBanner v-if="success" type="success" :message="success" class="mb-4" />
+    <UiAlertBanner v-if="erro" type="error" :message="erro" class="mb-4" />
+    <UiAlertBanner v-if="aviso && etapa === 'itens'" type="info" :message="aviso" class="mb-4" />
+    <UiLoadingState v-if="carregando" />
 
-    <UiLoadingState v-if="loading" />
-
-    <template v-else>
-      <div class="mb-6 flex flex-col gap-4 md:flex-row">
-        <div v-if="auth.isAdmin" class="md:w-72">
-          <label class="label">Cliente</label>
-          <select v-model="selectedClienteId" class="input">
+    <template v-else-if="etapa === 'itens'">
+      <div class="card mb-4 grid gap-4 p-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div>
+          <label class="label" for="escola">Escola</label>
+          <select v-if="auth.isAdmin" id="escola" v-model="clienteId" class="input">
             <option v-for="c in clientes" :key="c.id" :value="c.id">{{ c.nome }}</option>
           </select>
+          <p v-else id="escola" class="py-2.5 text-sm font-medium text-gray-900">{{ nomeEscola }}</p>
         </div>
-        <div class="md:w-64">
-          <label class="label">Estante / Período</label>
-          <select v-model="selectedEstanteId" class="input">
+        <div>
+          <label class="label" for="edital">Edital / período</label>
+          <select id="edital" v-model="estanteId" class="input" :disabled="!estantes.length">
             <option v-for="e in estantes" :key="e.id" :value="e.id">
-              {{ e.periodo }} — {{ e.clienteNome || 'Cliente' }}
-              ({{ e.quantidadeProdutos || 0 }} itens)
+              {{ e.observacao ? `${e.periodo} · ${e.observacao}` : e.periodo }}
             </option>
           </select>
         </div>
-        <div class="relative flex-1">
-          <label class="label">Buscar</label>
-          <div class="relative">
-            <Icon name="lucide:search" class="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
-            <input
-              v-model="searchTerm"
-              class="input pl-10"
-              type="search"
-              placeholder="Buscar produtos..."
-            >
-          </div>
-        </div>
-        <div class="flex items-end gap-2">
-          <button
-            type="button"
-            class="rounded-lg border px-4 py-3 transition-colors"
-            :class="viewMode === 'grid' ? 'border-brand-600 bg-brand-600 text-white' : 'border-gray-300 bg-white text-gray-700'"
-            @click="viewMode = 'grid'"
-          >
-            <Icon name="lucide:layout-grid" class="h-5 w-5" />
-          </button>
-          <button
-            type="button"
-            class="rounded-lg border px-4 py-3 transition-colors"
-            :class="viewMode === 'list' ? 'border-brand-600 bg-brand-600 text-white' : 'border-gray-300 bg-white text-gray-700'"
-            @click="viewMode = 'list'"
-          >
-            <Icon name="lucide:list" class="h-5 w-5" />
-          </button>
+        <div class="hidden lg:block">
+          <p class="label">Itens no edital</p>
+          <p class="py-2.5 text-sm tabular-nums text-gray-900">{{ itens.length }}</p>
         </div>
       </div>
 
       <UiEmptyState
         v-if="!estantes.length"
-        message="Nenhuma estante ativa encontrada para este cliente."
+        message="Nenhum edital ativo para esta escola. Fale com o fornecedor."
       />
-
+      <UiLoadingState v-else-if="carregandoItens" />
       <UiEmptyState
-        v-else-if="!filteredProdutos.length"
-        message="Nenhum produto disponível nesta estante."
+        v-else-if="!itens.length"
+        message="Este edital não tem itens com saldo disponível."
       />
 
-      <div
-        v-else
-        :class="viewMode === 'grid'
-          ? 'grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
-          : 'space-y-4'"
-      >
-        <div
-          v-for="product in filteredProdutos"
-          :key="`${product.estanteId}-${product.produtoId}`"
-          class="card overflow-hidden transition-shadow hover:shadow-lg"
-          :class="viewMode === 'list' ? 'p-6' : ''"
-        >
-          <template v-if="viewMode === 'grid'">
-            <div class="flex aspect-square items-center justify-center bg-gray-100">
-              <Icon name="lucide:package" class="h-16 w-16 text-gray-300" />
-            </div>
-            <div class="p-4">
-              <h3 class="mb-1 text-lg font-bold text-gray-900">{{ product.produtoNome }}</h3>
-              <p class="mb-1 text-sm font-semibold text-brand-600">{{ formatCurrency(product.precoVenda) }}</p>
-              <p class="mb-4 text-xs text-gray-500">Estoque: {{ product.quantidade }}</p>
-
-              <div v-if="cart.getQuantity(product.produtoId, product.estanteId) > 0" class="flex items-center justify-between gap-2">
-                <button
-                  type="button"
-                  class="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-200 hover:bg-gray-300"
-                  @click="cart.updateQuantity(product.produtoId, product.estanteId, -1)"
-                >
-                  <Icon name="lucide:minus" class="h-5 w-5" />
-                </button>
-                <span class="text-lg font-bold">{{ cart.getQuantity(product.produtoId, product.estanteId) }}</span>
-                <button
-                  type="button"
-                  class="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-600 text-white hover:bg-brand-700"
-                  @click="cart.updateQuantity(product.produtoId, product.estanteId, 1)"
-                >
-                  <Icon name="lucide:plus" class="h-5 w-5" />
-                </button>
-              </div>
-              <button
-                v-else
-                type="button"
-                class="btn-primary w-full"
-                @click="addProduct(product)"
-              >
-                <Icon name="lucide:plus" class="h-5 w-5" />
-                Adicionar
-              </button>
-            </div>
-          </template>
-
-          <template v-else>
-            <div class="flex items-center justify-between gap-4">
-              <div class="flex items-center gap-4">
-                <div>
-                  <h3 class="text-lg font-bold text-gray-900">{{ product.produtoNome }}</h3>
-                  <p class="text-sm font-semibold text-brand-600">{{ formatCurrency(product.precoVenda) }}</p>
-                  <p class="text-xs text-gray-500">Estoque: {{ product.quantidade }}</p>
-                </div>
-              </div>
-              <div v-if="cart.getQuantity(product.produtoId, product.estanteId) > 0" class="flex items-center gap-2">
-                <button
-                  type="button"
-                  class="flex h-10 w-10 items-center justify-center rounded-lg bg-gray-200"
-                  @click="cart.updateQuantity(product.produtoId, product.estanteId, -1)"
-                >
-                  <Icon name="lucide:minus" class="h-5 w-5" />
-                </button>
-                <span class="w-10 text-center font-bold">{{ cart.getQuantity(product.produtoId, product.estanteId) }}</span>
-                <button
-                  type="button"
-                  class="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-600 text-white"
-                  @click="cart.updateQuantity(product.produtoId, product.estanteId, 1)"
-                >
-                  <Icon name="lucide:plus" class="h-5 w-5" />
-                </button>
-              </div>
-              <button
-                v-else
-                type="button"
-                class="btn-primary"
-                @click="addProduct(product)"
-              >
-                <Icon name="lucide:plus" class="h-5 w-5" />
-                Adicionar
-              </button>
-            </div>
-          </template>
+      <template v-else>
+        <div class="mb-3 flex flex-wrap items-center gap-4">
+          <div class="relative min-w-[16rem] flex-1">
+            <Icon name="lucide:search" class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <input v-model="busca" class="input pl-9" type="search" placeholder="Buscar item do edital" aria-label="Buscar item do edital">
+          </div>
+          <label class="flex items-center gap-2 text-sm text-gray-700">
+            <input v-model="somentePreenchidos" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500">
+            Só itens com quantidade
+          </label>
         </div>
-      </div>
+
+        <PedidoTabelaItens v-if="linhasVisiveis.length" :linhas="linhasVisiveis" @alterar="alterarQuantidade" />
+        <p v-else class="card p-6 text-center text-sm text-gray-500">
+          {{ somentePreenchidos ? 'Nenhum item com quantidade ainda.' : 'Nenhum item encontrado para a busca.' }}
+        </p>
+
+        <PedidoBarraResumo
+          :itens="linhasPreenchidas.length"
+          :total="total"
+          :erros="linhasComErro.length"
+          rotulo="Revisar pedido"
+          @acao="irParaRevisao"
+        />
+      </template>
     </template>
 
-    <!-- Cart drawer -->
-    <Teleport to="body">
-      <div
-        v-if="showCart"
-        class="fixed inset-0 z-50 flex justify-end bg-black/50"
-        @click.self="showCart = false"
+    <template v-else>
+      <PedidoRevisao
+        v-model:observacao="rascunho.observacao"
+        v-model:observacoes-itens="rascunho.observacoesItens"
+        :linhas="linhasPreenchidas"
+        :total="total"
+        :escola="nomeEscola"
+        :edital="descricaoEdital"
+      />
+      <PedidoBarraResumo
+        :itens="linhasPreenchidas.length"
+        :total="total"
+        :erros="0"
+        rotulo="Enviar pedido"
+        :carregando="enviando"
+        @acao="enviarPedido"
       >
-        <div class="h-full w-full max-w-md overflow-y-auto bg-white p-6 shadow-2xl" @click.stop>
-          <div class="mb-6 flex items-center justify-between">
-            <h3 class="text-2xl font-bold text-gray-900">Seu Carrinho</h3>
-            <button type="button" class="btn-ghost p-2" @click="showCart = false">
-              <Icon name="lucide:x" class="h-5 w-5" />
-            </button>
-          </div>
-
-          <div v-if="!cart.items.length" class="py-12 text-center">
-            <Icon name="lucide:shopping-cart" class="mx-auto mb-4 h-16 w-16 text-gray-300" />
-            <p class="text-gray-500">Seu carrinho está vazio</p>
-          </div>
-
-          <template v-else>
-            <div class="mb-6 space-y-4">
-              <div
-                v-for="item in cart.items"
-                :key="`${item.estanteId}-${item.produtoId}`"
-                class="flex items-center gap-4 rounded-lg bg-gray-50 p-4"
-              >
-                <div class="flex-1">
-                  <h4 class="font-medium text-gray-900">{{ item.produtoNome }}</h4>
-                  <p class="text-sm text-gray-600">
-                    {{ item.quantidade }} × {{ formatCurrency(item.precoVenda) }}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  class="text-red-600 hover:text-red-700"
-                  @click="cart.removeItem(item.produtoId, item.estanteId)"
-                >
-                  <Icon name="lucide:x" class="h-5 w-5" />
-                </button>
-              </div>
-            </div>
-
-            <div class="mb-4">
-              <label class="label">Observação do pedido</label>
-              <textarea v-model="cart.observacao" class="input" rows="3" />
-            </div>
-
-            <div class="mb-6 space-y-2 border-t border-gray-200 pt-4">
-              <div class="flex justify-between text-lg">
-                <span class="text-gray-600">Itens:</span>
-                <span class="font-bold">{{ cart.totalItems }}</span>
-              </div>
-              <div class="flex justify-between text-lg">
-                <span class="text-gray-600">Total:</span>
-                <span class="font-bold">{{ formatCurrency(cart.totalValue) }}</span>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              class="btn-success w-full py-4 text-lg font-bold"
-              :disabled="submitting"
-              @click="submitOrder"
-            >
-              <Icon v-if="submitting" name="lucide:loader-2" class="h-5 w-5 animate-spin" />
-              <Icon v-else name="lucide:check" class="h-5 w-5" />
-              {{ submitting ? 'Enviando...' : 'Confirmar Pedido' }}
-            </button>
-          </template>
-        </div>
-      </div>
-    </Teleport>
+        <button type="button" class="btn-secondary ml-auto" @click="etapa = 'itens'">
+          <Icon name="lucide:arrow-left" class="h-4 w-4" />
+          Voltar e editar
+        </button>
+      </PedidoBarraResumo>
+    </template>
   </div>
 </template>

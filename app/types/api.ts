@@ -233,7 +233,10 @@ export interface EstanteProduto {
   estantePeriodo?: string
   produtoId: number
   produtoNome: string
+  unidadeMedidaSigla?: string | null
+  unidadeMedidaDescricao?: string | null
   precoVenda: number
+  /** Saldo do edital ainda disponível para pedidos */
   quantidade: number
   ativo: boolean
   dataCadastro?: string
