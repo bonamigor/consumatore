@@ -18,8 +18,8 @@ export interface LoginResponse {
   clienteId: number | null
 }
 
+// Dados de exibição da sessão; o token fica apenas no cookie HttpOnly
 export interface AuthSession {
-  accessToken: string
   expiresAt: number
   usuarioId: number
   nome: string

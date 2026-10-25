@@ -9,5 +9,7 @@ export function useAuthService() {
   return {
     login: (payload: LoginRequest) =>
       api.post<LoginResponse>('/api/auth/login', payload),
+    logout: () =>
+      api.post<void>('/api/auth/logout'),
   }
 }

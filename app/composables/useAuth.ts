@@ -12,6 +12,12 @@ export function useAuth() {
   }
 
   async function logout() {
+    try {
+      await authService.logout()
+    }
+    catch {
+      // Mesmo se a API falhar, a sessão local é encerrada
+    }
     auth.clearSession()
     cart.clear()
     await navigateTo('/login')

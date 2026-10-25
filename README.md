@@ -36,12 +36,12 @@ App em `http://localhost:3000`.
 
 | Variável | Descrição |
 |----------|-----------|
-| `NUXT_PUBLIC_API_BASE` | URL base da API Cameriere (sem barra no final) |
+| `API_PROXY_TARGET` | URL base da API Cameriere (sem barra no final). O Nuxt repassa `/api/**` para ela, então o navegador só fala com o domínio do frontend. Lida no build. |
 
 Local (`.env`):
 
 ```env
-NUXT_PUBLIC_API_BASE=http://localhost:8080
+API_PROXY_TARGET=http://localhost:8080
 ```
 
 ## Deploy
@@ -52,7 +52,7 @@ NUXT_PUBLIC_API_BASE=http://localhost:8080
 2. Framework: **Nuxt.js** (detectado automaticamente; ver `vercel.json`).
 3. Em **Environment Variables**, defina:
 
-   - `NUXT_PUBLIC_API_BASE` = URL pública da API no Railway  
+   - `API_PROXY_TARGET` = URL pública da API no Railway  
      Ex.: `https://cameriere-production.up.railway.app`
 
 4. Deploy. O Nitro usa o preset `vercel`.

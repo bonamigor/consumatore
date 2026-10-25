@@ -2,17 +2,14 @@ import type { FetchOptions } from 'ofetch'
 import { getErrorMessage } from '~/utils/format'
 
 export function useApi() {
-  const config = useRuntimeConfig()
   const auth = useAuthStore()
   const router = useRouter()
 
+  // O JWT viaja no cookie HttpOnly definido pela API; o JavaScript nunca o lê
   const api = $fetch.create({
-    baseURL: config.public.apiBase as string,
+    credentials: 'same-origin',
     onRequest({ options }) {
       const headers = new Headers(options.headers as HeadersInit | undefined)
-      if (auth.token) {
-        headers.set('Authorization', `Bearer ${auth.token}`)
-      }
       headers.set('Accept', 'application/json')
       options.headers = headers
     },

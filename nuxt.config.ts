@@ -1,3 +1,8 @@
+// A API é servida pelo próprio domínio do frontend (/api/** → backend), assim o cookie
+// HttpOnly de autenticação é de primeira parte e o navegador nunca precisa de CORS.
+const apiProxyTarget = (process.env.API_PROXY_TARGET || process.env.NUXT_PUBLIC_API_BASE || 'http://localhost:8080')
+  .replace(/\/$/, '')
+
 export default defineNuxtConfig({
   compatibilityDate: '2024-11-01',
   devtools: { enabled: process.env.NODE_ENV !== 'production' },
@@ -20,11 +25,9 @@ export default defineNuxtConfig({
     ],
   },
 
-  runtimeConfig: {
-    public: {
-      // Em produção (Vercel): defina NUXT_PUBLIC_API_BASE com a URL pública da API no Railway
-      apiBase: process.env.NUXT_PUBLIC_API_BASE || 'http://localhost:8080',
-    },
+  // Em produção (Vercel): defina API_PROXY_TARGET com a URL pública da API no Railway
+  routeRules: {
+    '/api/**': { proxy: `${apiProxyTarget}/api/**` },
   },
 
   nitro: process.env.VERCEL ? { preset: 'vercel' } : {},
