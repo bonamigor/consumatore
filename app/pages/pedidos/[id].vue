@@ -122,7 +122,7 @@ function imprimirNota() {
       <p><strong>Cidade / Estado:</strong> ${safe(cidadeEstado(empresa.endereco))}</p>
       <hr>
       <h2>Pedido ${pedido.value.id}</h2>
-      <p><strong>Cliente:</strong> ${safe(pedido.value.cliente?.id)} - ${safe(pedido.value.cliente?.nome)}</p>
+      <p><strong>Escola:</strong> ${safe(pedido.value.cliente?.id)} - ${safe(pedido.value.cliente?.nome)}</p>
       <p><strong>Endereço:</strong> ${safe(enderecoLinha(pedido.value.cliente?.endereco))}</p>
       <p><strong>Cidade/Estado:</strong> ${safe(cidadeEstado(pedido.value.cliente?.endereco))}</p>
       <p><strong>Telefone:</strong> ${safe(pedido.value.cliente?.telefone || '')}</p>
@@ -264,7 +264,7 @@ onMounted(load)
       <div class="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div class="card space-y-3 p-6 lg:col-span-1">
           <div class="flex justify-between gap-4">
-            <span class="text-gray-600">Cliente</span>
+            <span class="text-gray-600">Escola</span>
             <span class="text-right font-medium">{{ pedido.cliente?.nome }}</span>
           </div>
           <div class="flex justify-between gap-4">
