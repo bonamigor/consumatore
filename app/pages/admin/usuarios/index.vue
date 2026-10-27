@@ -75,10 +75,10 @@ async function save() {
   error.value = ''
   try {
     if (form.admin && form.clienteId) {
-      throw new Error('Administradores não podem estar associados a um cliente')
+      throw new Error('Administradores não podem estar vinculados a uma escola')
     }
     if (!form.admin && !form.clienteId) {
-      throw new Error('Operadores devem estar associados a um cliente (ex.: escola)')
+      throw new Error('Usuários de escola precisam estar vinculados a uma escola')
     }
 
     if (editing.value) {
@@ -162,7 +162,7 @@ onMounted(load)
             <th class="table-th">Nome</th>
             <th class="table-th">E-mail</th>
             <th class="table-th">Perfil</th>
-            <th class="table-th">Cliente</th>
+            <th class="table-th">Escola</th>
             <th class="table-th">2FA</th>
             <th class="table-th">Ações</th>
           </tr>
@@ -230,16 +230,16 @@ onMounted(load)
             <label for="is-admin" class="text-sm font-medium text-gray-800">Administrador</label>
           </div>
           <p class="mt-2 text-xs text-gray-600">
-            Admins gerenciam o sistema e não ficam vinculados a escola/cliente.
-            Operadores (desmarque) representam o gerente da merenda e precisam de um cliente.
+            Admins gerenciam o sistema e não ficam vinculados a uma escola.
+            Operadores (desmarque) representam o gerente da merenda e precisam estar vinculados à escola.
           </p>
         </div>
         <div v-if="!form.admin">
-          <label class="label">Cliente vinculado *</label>
+          <label class="label">Escola vinculada *</label>
           <UiClienteSearch
             v-model="form.clienteId"
             :clientes="clientes"
-            placeholder="Buscar escola/cliente..."
+            placeholder="Buscar escola..."
             required
           />
         </div>

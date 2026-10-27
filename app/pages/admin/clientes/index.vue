@@ -42,7 +42,7 @@ async function load() {
     empresas.value = empresasResponse.filter(e => e.ativo)
   }
   catch (e) {
-    error.value = e instanceof Error ? e.message : 'Erro ao carregar clientes'
+    error.value = e instanceof Error ? e.message : 'Erro ao carregar escolas'
   }
   finally {
     loading.value = false
@@ -145,7 +145,7 @@ async function save() {
 }
 
 async function remove(c: Cliente) {
-  if (!confirm(`Excluir cliente ${c.nome}?`)) return
+  if (!confirm(`Excluir a escola ${c.nome}?`)) return
   try {
     await clienteService.remover(c.id)
     await load()
@@ -160,11 +160,11 @@ onMounted(load)
 
 <template>
   <div>
-    <UiPageHeader title="Gerenciar Clientes" description="Adicionar, editar ou remover clientes">
+    <UiPageHeader title="Escolas" description="Cadastro das escolas atendidas">
       <template #actions>
         <button type="button" class="btn-primary" @click="openCreate">
           <Icon name="lucide:plus" class="h-5 w-5" />
-          Novo Cliente
+          Nova escola
         </button>
       </template>
     </UiPageHeader>
@@ -212,7 +212,7 @@ onMounted(load)
 
     <UiAppModal
       :open="modalOpen"
-      :title="editing ? 'Editar Cliente' : 'Novo Cliente'"
+      :title="editing ? 'Editar escola' : 'Nova escola'"
       size="lg"
       @close="modalOpen = false"
     >
@@ -297,7 +297,7 @@ onMounted(load)
         </div>
         <div class="flex items-center gap-2 pt-6">
           <input id="ativo" v-model="form.ativo" type="checkbox" class="h-4 w-4">
-          <label for="ativo" class="text-sm text-gray-700">Cliente ativo</label>
+          <label for="ativo" class="text-sm text-gray-700">Escola ativa</label>
         </div>
       </form>
       <template #footer>

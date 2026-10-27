@@ -160,7 +160,7 @@ onMounted(load)
           <thead class="border-b border-gray-200 bg-gray-50">
             <tr>
               <th class="table-th">Nº Pedido</th>
-              <th v-if="auth.isAdmin" class="table-th">Cliente</th>
+              <th v-if="auth.isAdmin" class="table-th">Escola</th>
               <th class="table-th">Data</th>
               <th class="table-th">Status</th>
               <th class="table-th">Itens</th>

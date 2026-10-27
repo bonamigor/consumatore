@@ -44,9 +44,9 @@ const selectedClienteNome = computed(() =>
 
 const emptyMessage = computed(() => {
   if (!selectedClienteId.value) {
-    return 'Busque e selecione um cliente para ver as estantes.'
+    return 'Busque e selecione uma escola para ver os editais.'
   }
-  return `Nenhuma estante para ${selectedClienteNome.value || 'este cliente'}.`
+  return `Nenhum edital para ${selectedClienteNome.value || 'esta escola'}.`
 })
 
 async function load() {
@@ -57,7 +57,7 @@ async function load() {
     await loadEstantes()
   }
   catch (e) {
-    error.value = e instanceof Error ? e.message : 'Erro ao carregar estantes'
+    error.value = e instanceof Error ? e.message : 'Erro ao carregar editais'
   }
   finally {
     loading.value = false
@@ -69,7 +69,7 @@ watch(selectedClienteId, async () => {
     await loadEstantes()
   }
   catch (e) {
-    error.value = e instanceof Error ? e.message : 'Erro ao carregar estantes'
+    error.value = e instanceof Error ? e.message : 'Erro ao carregar editais'
   }
 })
 
@@ -113,7 +113,7 @@ async function save() {
     }
     else {
       if (!form.clienteId) {
-        error.value = 'Selecione um cliente'
+        error.value = 'Selecione uma escola'
         return
       }
       const payload: EstanteRequest = {
@@ -138,7 +138,7 @@ async function save() {
 }
 
 async function desativar(e: Estante) {
-  if (!confirm(`Desativar estante ${e.periodo}?`)) return
+  if (!confirm(`Desativar o edital ${e.periodo}?`)) return
   try {
     await estanteService.desativar(e.id)
     await loadEstantes()
@@ -149,7 +149,7 @@ async function desativar(e: Estante) {
 }
 
 async function remove(e: Estante) {
-  if (!confirm(`Excluir estante ${e.periodo}?`)) return
+  if (!confirm(`Excluir o edital ${e.periodo}?`)) return
   try {
     await estanteService.remover(e.id)
     await loadEstantes()
@@ -164,24 +164,24 @@ onMounted(load)
 
 <template>
   <div>
-    <UiPageHeader title="Gerenciar Estantes" description="Organizar catálogos mensais por cliente">
+    <UiPageHeader title="Editais" description="Itens, preços e saldos de cada escola por período">
       <template #actions>
         <button type="button" class="btn-primary" @click="openCreate">
           <Icon name="lucide:plus" class="h-5 w-5" />
-          Nova Estante
+          Novo edital
         </button>
       </template>
     </UiPageHeader>
 
     <div class="mb-6 max-w-xl">
-      <label class="label">Buscar cliente</label>
+      <label class="label">Buscar escola</label>
       <UiClienteSearch
         v-model="selectedClienteId"
         :clientes="clientes"
-        placeholder="Digite o nome ou CNPJ do cliente..."
+        placeholder="Digite o nome ou CNPJ da escola..."
       />
       <p class="mt-1.5 text-xs text-gray-500">
-        Digite para filtrar e selecione um cliente; as estantes dele aparecerão abaixo.
+        Digite para filtrar e selecione uma escola; os editais dela aparecerão abaixo.
       </p>
     </div>
 
@@ -231,16 +231,16 @@ onMounted(load)
 
     <UiAppModal
       :open="modalOpen"
-      :title="editing ? 'Editar Estante' : 'Nova Estante'"
+      :title="editing ? 'Editar edital' : 'Novo edital'"
       @close="modalOpen = false"
     >
       <form class="space-y-4" @submit.prevent="save">
         <div v-if="!editing">
-          <label class="label">Cliente</label>
+          <label class="label">Escola</label>
           <UiClienteSearch
             v-model="form.clienteId"
             :clientes="clientes"
-            placeholder="Buscar cliente..."
+            placeholder="Buscar escola..."
             required
           />
         </div>
@@ -258,7 +258,7 @@ onMounted(load)
         </div>
         <div class="flex items-center gap-2">
           <input id="est-ativa" v-model="form.ativa" type="checkbox" class="h-4 w-4">
-          <label for="est-ativa" class="text-sm">Estante ativa</label>
+          <label for="est-ativa" class="text-sm">Edital ativo</label>
         </div>
       </form>
       <template #footer>

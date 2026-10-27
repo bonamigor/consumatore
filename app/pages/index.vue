@@ -12,6 +12,8 @@ const estanteService = useEstanteService()
 const loading = ref(true)
 const error = ref('')
 const pedidos = ref<Pedido[]>([])
+/** Admin: pedidos pendentes mais antigos primeiro (os que esperam há mais tempo). */
+const aguardando = ref<Pedido[]>([])
 const stats = reactive({
   pendentes: 0,
   confirmados: 0,
@@ -25,21 +27,20 @@ const stats = reactive({
 onMounted(async () => {
   try {
     if (auth.isAdmin) {
-      const [pedidosPage, clientes, produtos] = await Promise.all([
-        pedidoService.listar({ size: 50, sort: 'dataCriacao,desc' }),
+      const [pendentesPage, resumoPendentes, clientes, produtos] = await Promise.all([
+        pedidoService.listar({ status: 'PENDENTE', size: 8, sort: 'dataCriacao,asc' }),
+        pedidoService.resumirFiltros({ status: 'PENDENTE' }),
         clienteService.listar(),
         produtoService.listar(),
       ])
-      pedidos.value = pedidosPage.content || []
+      aguardando.value = pendentesPage.content || []
+      stats.pendentes = resumoPendentes.quantidadePedidos
       stats.clientes = clientes.length
       stats.produtos = produtos.filter(p => p.ativo).length
-      // Count estantes across first few clients (lightweight)
-      let estanteCount = 0
-      for (const c of clientes.slice(0, 10)) {
-        const page = await estanteService.listarPorCliente(c.id, { size: 1 })
-        estanteCount += page.totalElements || 0
-      }
-      stats.estantes = estanteCount
+      const paginasEditais = await Promise.all(
+        clientes.map(c => estanteService.listarPorCliente(c.id, { size: 1 })),
+      )
+      stats.estantes = paginasEditais.reduce((soma, pagina) => soma + totalDaPagina(pagina), 0)
     }
     else if (auth.session?.clienteId) {
       const page = await pedidoService.listarPorCliente(auth.session.clienteId, {
@@ -47,12 +48,11 @@ onMounted(async () => {
         sort: 'dataCriacao,desc',
       })
       pedidos.value = page.content || []
+      stats.pendentes = pedidos.value.filter(p => p.status === 'PENDENTE').length
+      stats.confirmados = pedidos.value.filter(p => p.status === 'CONFIRMADO').length
+      stats.entregues = pedidos.value.filter(p => p.status === 'ENTREGUE').length
+      stats.total = pedidos.value.length
     }
-
-    stats.pendentes = pedidos.value.filter(p => p.status === 'PENDENTE').length
-    stats.confirmados = pedidos.value.filter(p => p.status === 'CONFIRMADO').length
-    stats.entregues = pedidos.value.filter(p => p.status === 'ENTREGUE').length
-    stats.total = pedidos.value.length
   }
   catch (e) {
     error.value = e instanceof Error ? e.message : 'Erro ao carregar painel'
@@ -73,63 +73,64 @@ onMounted(async () => {
       <!-- Admin dashboard -->
       <template v-if="auth.isAdmin">
         <UiPageHeader
-          title="Painel Administrativo"
-          description="Gerencie todos os aspectos do sistema de pedidos"
+          title="Início"
+          :description="`Olá, ${auth.session?.nome}. Este é o resumo da operação.`"
         />
 
         <div class="mb-8 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
           <UiStatCard
-            label="Pedidos Pendentes"
+            label="Pedidos pendentes"
             :value="stats.pendentes"
-            icon="lucide:shopping-cart"
+            icon="lucide:clock"
             color="blue"
             to="/admin/pedidos?status=PENDENTE"
           />
-          <UiStatCard label="Produtos Ativos" :value="stats.produtos" icon="lucide:package" color="green" />
-          <UiStatCard label="Clientes Cadastrados" :value="stats.clientes" icon="lucide:users" color="purple" />
-          <UiStatCard label="Estantes" :value="stats.estantes" icon="lucide:layout-grid" color="orange" />
+          <UiStatCard label="Produtos ativos" :value="stats.produtos" icon="lucide:package" color="green" />
+          <UiStatCard label="Escolas" :value="stats.clientes" icon="lucide:school" color="purple" />
+          <UiStatCard label="Editais" :value="stats.estantes" icon="lucide:file-text" color="orange" />
         </div>
 
-        <h3 class="mb-4 text-xl font-bold text-gray-900">Ações Rápidas</h3>
-        <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <NuxtLink
-            v-for="action in [
-              { to: '/admin/clientes', title: 'Gerenciar Clientes', desc: 'Adicionar, editar ou remover clientes', icon: 'lucide:users', color: 'blue' },
-              { to: '/admin/produtos', title: 'Gerenciar Produtos', desc: 'Cadastrar e organizar produtos', icon: 'lucide:package', color: 'green' },
-              { to: '/admin/estantes', title: 'Gerenciar Estantes', desc: 'Organizar produtos em estantes', icon: 'lucide:layout-grid', color: 'orange' },
-              { to: '/admin/usuarios', title: 'Gerenciar Usuários', desc: 'Controlar acessos e permissões', icon: 'lucide:settings', color: 'purple' },
-            ]"
-            :key="action.to"
-            :to="action.to"
-            class="card group p-6 text-left transition-all hover:border-brand-300 hover:shadow-md"
-          >
-            <div class="flex items-center gap-4">
-              <div
-                class="flex h-16 w-16 items-center justify-center rounded-lg transition-colors"
-                :class="{
-                  'bg-blue-100 group-hover:bg-blue-600': action.color === 'blue',
-                  'bg-green-100 group-hover:bg-green-600': action.color === 'green',
-                  'bg-orange-100 group-hover:bg-orange-600': action.color === 'orange',
-                  'bg-purple-100 group-hover:bg-purple-600': action.color === 'purple',
-                }"
-              >
-                <Icon
-                  :name="action.icon"
-                  class="h-8 w-8 transition-colors group-hover:text-white"
-                  :class="{
-                    'text-blue-600': action.color === 'blue',
-                    'text-green-600': action.color === 'green',
-                    'text-orange-600': action.color === 'orange',
-                    'text-purple-600': action.color === 'purple',
-                  }"
-                />
-              </div>
-              <div>
-                <h4 class="mb-1 text-lg font-bold text-gray-900">{{ action.title }}</h4>
-                <p class="text-sm text-gray-600">{{ action.desc }}</p>
-              </div>
+        <div class="card overflow-hidden">
+          <div class="flex items-center justify-between border-b border-gray-200 px-5 py-3">
+            <div>
+              <h3 class="font-semibold text-gray-900">Pedidos aguardando confirmação</h3>
+              <p class="text-xs text-gray-500">Os mais antigos primeiro</p>
             </div>
-          </NuxtLink>
+            <NuxtLink v-if="stats.pendentes" to="/admin/pedidos?status=PENDENTE" class="text-sm font-medium text-brand-600 hover:text-brand-700">
+              Ver todos ({{ stats.pendentes }})
+            </NuxtLink>
+          </div>
+          <p v-if="!aguardando.length" class="flex items-center gap-2 px-5 py-6 text-sm text-gray-500">
+            <Icon name="lucide:check-circle-2" class="h-5 w-5 text-green-600" />
+            Nenhum pedido aguardando confirmação.
+          </p>
+          <table v-else class="w-full text-sm">
+            <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+              <tr>
+                <th class="px-5 py-2 text-left font-medium">Pedido</th>
+                <th class="px-3 py-2 text-left font-medium">Escola</th>
+                <th class="px-3 py-2 text-left font-medium">Recebido em</th>
+                <th class="px-3 py-2 text-right font-medium">Itens</th>
+                <th class="px-5 py-2 text-right font-medium">Total</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+              <tr
+                v-for="p in aguardando"
+                :key="p.id"
+                class="cursor-pointer hover:bg-gray-50"
+                @click="navigateTo(`/pedidos/${p.id}`)"
+              >
+                <td class="px-5 py-2.5 font-medium text-brand-700">
+                  <NuxtLink :to="`/pedidos/${p.id}`">#{{ p.id }}</NuxtLink>
+                </td>
+                <td class="px-3 py-2.5 text-gray-900">{{ p.cliente?.nome }}</td>
+                <td class="px-3 py-2.5 text-gray-600">{{ formatDateTime(p.dataCriacao) }}</td>
+                <td class="px-3 py-2.5 text-right tabular-nums text-gray-600">{{ p.itens?.length ?? 0 }}</td>
+                <td class="px-5 py-2.5 text-right tabular-nums font-medium text-gray-900">{{ formatCurrency(p.valorTotal) }}</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </template>
 

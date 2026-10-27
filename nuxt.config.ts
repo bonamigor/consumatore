@@ -16,6 +16,13 @@ export default defineNuxtConfig({
 
   css: ['~/assets/css/main.css'],
 
+  icon: {
+    // O padrão (/api/_nuxt_icon) cairia no proxy da API abaixo e responderia 401;
+    // os ícones usados no código também vão no pacote, sem precisar buscar no servidor.
+    localApiEndpoint: '/_nuxt_icon',
+    clientBundle: { scan: true },
+  },
+
   imports: {
     dirs: [
       'composables',

@@ -52,7 +52,7 @@ onMounted(load)
   <div>
     <UiPageHeader
       title="Relatórios"
-      description="Vendas por cliente, faturamento e acesso ao relatório de compras"
+      description="Vendas por escola, faturamento e acesso ao relatório de compras"
     >
       <template #actions>
         <button type="button" class="btn-primary" :disabled="loading" @click="load">
@@ -84,7 +84,7 @@ onMounted(load)
         </div>
         <div>
           <h3 class="font-bold text-gray-900">Listagem de Pedidos / Vendas</h3>
-          <p class="text-sm text-gray-600">Filtre por cliente, ID, datas e veja o valor total</p>
+          <p class="text-sm text-gray-600">Filtre por escola, número do pedido e datas e veja o valor total</p>
         </div>
       </NuxtLink>
     </div>
@@ -116,7 +116,7 @@ onMounted(load)
           <p class="text-3xl font-bold text-gray-900">{{ totalPedidosClientes }}</p>
         </div>
         <div>
-          <p class="text-sm text-gray-600">Valor por cliente (soma)</p>
+          <p class="text-sm text-gray-600">Valor por escola (soma)</p>
           <p class="text-3xl font-bold text-gray-900">{{ formatCurrency(totalValorClientes) }}</p>
         </div>
       </div>
@@ -124,14 +124,14 @@ onMounted(load)
 
     <div class="card overflow-hidden">
       <div class="border-b px-6 py-4">
-        <h3 class="text-lg font-bold text-gray-900">Pedidos por cliente no período</h3>
+        <h3 class="text-lg font-bold text-gray-900">Pedidos por escola no período</h3>
       </div>
       <UiLoadingState v-if="loading" />
       <UiEmptyState v-else-if="!porCliente.length" message="Nenhum pedido no período selecionado." />
       <table v-else class="w-full">
         <thead class="bg-gray-50">
           <tr>
-            <th class="table-th">Cliente</th>
+            <th class="table-th">Escola</th>
             <th class="table-th">Qtd. pedidos</th>
             <th class="table-th">Valor total</th>
             <th class="table-th">Ações</th>

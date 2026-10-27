@@ -8,7 +8,7 @@ const props = withDefaults(defineProps<{
   placeholder?: string
   required?: boolean
 }>(), {
-  placeholder: 'Buscar cliente por nome ou CNPJ...',
+  placeholder: 'Buscar escola por nome ou CNPJ...',
   required: false,
 })
 
@@ -102,7 +102,7 @@ onBeforeUnmount(() => document.removeEventListener('mousedown', onClickOutside))
         <button
           type="button"
           class="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
-          aria-label="Limpar cliente"
+          aria-label="Limpar escola"
           @click.stop="clearSelection"
         >
           <Icon name="lucide:x" class="h-4 w-4" />
@@ -129,7 +129,7 @@ onBeforeUnmount(() => document.removeEventListener('mousedown', onClickOutside))
       class="absolute z-20 mt-1 max-h-60 w-full overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg"
     >
       <p v-if="!filtered.length" class="px-3 py-2 text-sm text-gray-500">
-        Nenhum cliente encontrado
+        Nenhuma escola encontrada
       </p>
       <button
         v-for="c in filtered"

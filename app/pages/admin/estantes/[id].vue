@@ -47,7 +47,7 @@ async function load() {
     produtos.value = prods.filter(p => p.ativo)
   }
   catch (e) {
-    error.value = e instanceof Error ? e.message : 'Erro ao carregar estante'
+    error.value = e instanceof Error ? e.message : 'Erro ao carregar edital'
   }
   finally {
     loading.value = false
@@ -106,7 +106,7 @@ async function save() {
 }
 
 async function remove(item: EstanteProduto) {
-  if (!confirm(`Remover ${item.produtoNome} da estante?`)) return
+  if (!confirm(`Remover ${item.produtoNome} do edital?`)) return
   try {
     await estanteProdutoService.remover(item.id)
     await load()
@@ -122,8 +122,8 @@ onMounted(load)
 <template>
   <div>
     <UiPageHeader
-      :title="estante ? `Estante ${estante.periodo}` : 'Estante'"
-      :description="estante ? `${estante.clienteNome} — produtos e estoque` : 'Carregando...'"
+      :title="estante ? `Edital ${estante.periodo}` : 'Edital'"
+      :description="estante ? `${estante.clienteNome} — itens e saldos` : 'Carregando...'"
     >
       <template #actions>
         <NuxtLink to="/admin/estantes" class="btn-secondary">Voltar</NuxtLink>
@@ -136,7 +136,7 @@ onMounted(load)
 
     <UiAlertBanner v-if="error" type="error" :message="error" class="mb-4" />
     <UiLoadingState v-if="loading" />
-    <UiEmptyState v-else-if="!itens.length" message="Nenhum produto nesta estante." />
+    <UiEmptyState v-else-if="!itens.length" message="Nenhum item neste edital." />
 
     <div v-else class="card overflow-hidden">
       <table class="w-full">

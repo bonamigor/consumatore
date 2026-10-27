@@ -184,7 +184,7 @@ function filtrosResumoTexto() {
   }
   if (selectedClienteId.value) {
     const nome = clientes.value.find(c => c.id === selectedClienteId.value)?.nome
-    parts.push(`Cliente: ${nome || selectedClienteId.value}`)
+    parts.push(`Escola: ${nome || selectedClienteId.value}`)
   }
   if (typeof route.query.pedidoId === 'string' && route.query.pedidoId) {
     parts.push(`ID: ${route.query.pedidoId}`)
@@ -258,12 +258,12 @@ async function exportar(formato: 'pdf' | 'excel') {
   <div>
     <UiPageHeader
       title="Pedidos"
-      description="Filtre por cliente, ID, status e período. O total reflete os filtros aplicados."
+      description="Filtre por escola, número do pedido, status e período. O total reflete os filtros aplicados."
     />
 
     <div class="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-4">
       <div>
-        <label class="label">Buscar por cliente</label>
+        <label class="label">Buscar por escola</label>
         <UiClienteSearch
           v-model="selectedClienteId"
           :clientes="clientes"
@@ -375,7 +375,7 @@ async function exportar(formato: 'pdf' | 'excel') {
           <thead class="border-b bg-gray-50">
             <tr>
               <th class="table-th">Nº</th>
-              <th class="table-th">Cliente</th>
+              <th class="table-th">Escola</th>
               <th class="table-th">Data</th>
               <th class="table-th">Status</th>
               <th class="table-th">Total</th>

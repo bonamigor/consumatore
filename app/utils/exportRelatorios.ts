@@ -74,7 +74,7 @@ export function exportPedidosPdf(
   if (!options.analitico) {
     autoTable(doc, {
       startY,
-      head: [['Nº', 'Cliente', 'Data', 'Status', 'Total']],
+      head: [['Nº', 'Escola', 'Data', 'Status', 'Total']],
       body: pedidos.map(p => [
         `#${p.id}`,
         p.cliente?.nome || '—',
@@ -155,7 +155,7 @@ export function exportPedidosExcel(
   if (!options.analitico) {
     const rows = pedidos.map(p => ({
       'Nº Pedido': p.id,
-      Cliente: p.cliente?.nome || '',
+      Escola: p.cliente?.nome || '',
       CNPJ: p.cliente?.cnpj || '',
       Data: formatDate(p.dataCriacao),
       Status: statusPedidoLabel[p.status] || p.status,
@@ -165,7 +165,7 @@ export function exportPedidosExcel(
     const total = pedidos.reduce((s, p) => s + Number(p.valorTotal || 0), 0)
     rows.push({
       'Nº Pedido': '' as unknown as number,
-      Cliente: '',
+      Escola: '',
       CNPJ: '',
       Data: '',
       Status: 'TOTAL',
@@ -191,7 +191,7 @@ export function exportPedidosExcel(
       for (const item of itens) {
         rows.push({
           'Nº Pedido': p.id,
-          Cliente: p.cliente?.nome || '',
+          Escola: p.cliente?.nome || '',
           'Data Pedido': formatDate(p.dataCriacao),
           Status: statusPedidoLabel[p.status] || p.status,
           'Valor Pedido': Number(p.valorTotal || 0),
